@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/typesense/typesense-go/v3/typesense/api"
 )
 
 type serverHandler func(http.ResponseWriter, *http.Request)
@@ -373,6 +374,8 @@ func TestApiCallCanAbortRequest(t *testing.T) {
 		func(_ http.ResponseWriter, r *http.Request) {
 			appendHistory(&requestURLHistory, r)
 			cancel()
+			// block until the client closes the connection
+			<-r.Context().Done()
 		},
 		func(_ http.ResponseWriter, r *http.Request) {
 			appendHistory(&requestURLHistory, r)
@@ -388,7 +391,7 @@ func TestApiCallCanAbortRequest(t *testing.T) {
 		WithRetryInterval(0),
 	)
 
-	res, err := client.Collections().Retrieve(ctx)
+	res, err := client.Collections().Retrieve(ctx, &api.GetCollectionsParams{})
 
 	assert.ErrorIs(t, err, context.Canceled)
 	assert.Nil(t, res)

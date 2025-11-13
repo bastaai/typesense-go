@@ -1,14 +1,15 @@
 package typesense
 
 import (
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/sony/gobreaker"
 	"github.com/stretchr/testify/assert"
-	"github.com/typesense/typesense-go/v3/typesense/api"
-	"github.com/typesense/typesense-go/v3/typesense/api/circuit"
+	"github.com/typesense/typesense-go/v4/typesense/api"
+	"github.com/typesense/typesense-go/v4/typesense/api/circuit"
 )
 
 func TestHttpError(t *testing.T) {
@@ -235,6 +236,19 @@ func TestClientConfigOptions(t *testing.T) {
 					reflect.ValueOf(onStateChange).Pointer(),
 					reflect.ValueOf(client.apiConfig.CircuitBreakerOnStateChange).Pointer(),
 					"onStateChange is not valid")
+				assert.NotNil(t, client.apiClient)
+			},
+		},
+		{
+			name: "WithCustomHTTPClient",
+			options: []ClientOption{
+				WithCustomHTTPClient(&http.Client{
+					Timeout: 10 * time.Second,
+				}),
+			},
+			verify: func(t *testing.T, client *Client) {
+				assert.NotNil(t, client.apiConfig.CustomHTTPClient)
+				assert.Equal(t, 10*time.Second, client.apiConfig.CustomHTTPClient.Timeout)
 				assert.NotNil(t, client.apiClient)
 			},
 		},

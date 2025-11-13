@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/typesense/typesense-go/v3/typesense/api"
-	"github.com/typesense/typesense-go/v3/typesense/api/pointer"
+	"github.com/typesense/typesense-go/v4/typesense/api"
+	"github.com/typesense/typesense-go/v4/typesense/api/pointer"
 )
 
 func TestCollectionRetrieve(t *testing.T) {
 	collectionName := createNewCollection(t, "companies")
-	expectedResult := expectedNewCollection(collectionName)
+	expectedResult := expectedNewCollection(t, collectionName)
 
 	result, err := typesenseClient.Collection(collectionName).Retrieve(context.Background())
 	result.CreatedAt = pointer.Int64(0)
@@ -25,7 +25,7 @@ func TestCollectionRetrieve(t *testing.T) {
 
 func TestCollectionDelete(t *testing.T) {
 	collectionName := createNewCollection(t, "companies")
-	expectedResult := expectedNewCollection(collectionName)
+	expectedResult := expectedNewCollection(t, collectionName)
 
 	result, err := typesenseClient.Collection(collectionName).Delete(context.Background())
 	result.CreatedAt = pointer.Int64(0)

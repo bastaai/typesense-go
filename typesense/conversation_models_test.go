@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/typesense/typesense-go/v3/typesense/api"
-	"github.com/typesense/typesense-go/v3/typesense/api/pointer"
+	"github.com/typesense/typesense-go/v4/typesense/api"
+	"github.com/typesense/typesense-go/v4/typesense/api/pointer"
 )
 
 func TestConversationModelsRetrieve(t *testing.T) {
@@ -79,6 +79,7 @@ func TestConversationModelsCreate(t *testing.T) {
 
 		data := jsonEncode(t, expectedData)
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
 		w.Write(data)
 	})
 	defer server.Close()

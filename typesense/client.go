@@ -3,12 +3,13 @@
 package typesense
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/typesense/typesense-go/v3/typesense/api"
-	"github.com/typesense/typesense-go/v3/typesense/api/circuit"
+	"github.com/typesense/typesense-go/v4/typesense/api"
+	"github.com/typesense/typesense-go/v4/typesense/api/circuit"
 )
 
 type APIClientInterface interface {
@@ -17,11 +18,13 @@ type APIClientInterface interface {
 }
 
 type Client struct {
-	apiConfig   *ClientConfig
-	apiClient   APIClientInterface
-	collections CollectionsInterface
-	aliases     AliasesInterface
-	MultiSearch MultiSearchInterface
+	apiConfig    *ClientConfig
+	apiClient    APIClientInterface
+	collections  CollectionsInterface
+	aliases      AliasesInterface
+	MultiSearch  MultiSearchInterface
+	synonymSets  SynonymSetsInterface
+	curationSets CurationSetsInterface
 }
 
 func (c *Client) Collections() CollectionsInterface {
@@ -84,6 +87,22 @@ func (c *Client) NLSearchModel(modelID string) NLSearchModelInterface {
 	return &nlSearchModel{apiClient: c.apiClient, modelID: modelID}
 }
 
+func (c *Client) SynonymSets() SynonymSetsInterface {
+	return c.synonymSets
+}
+
+func (c *Client) SynonymSet(synonymSetName string) SynonymSetInterface {
+	return &synonymSet{apiClient: c.apiClient, synonymSetName: synonymSetName}
+}
+
+func (c *Client) CurationSets() CurationSetsInterface {
+	return c.curationSets
+}
+
+func (c *Client) CurationSet(curationSetName string) CurationSetInterface {
+	return &curationSet{apiClient: c.apiClient, curationSetName: curationSetName}
+}
+
 func (c *Client) Stopwords() StopwordsInterface {
 	return &stopwords{apiClient: c.apiClient}
 }
@@ -98,6 +117,11 @@ func (c *Client) Stats() StatsInterface {
 
 func (c *Client) Metrics() MetricsInterface {
 	return &metrics{apiClient: c.apiClient}
+}
+
+// Debug retrieves debug information from the Typesense server
+func (c *Client) Debug(ctx context.Context) (*api.DebugResponse, error) {
+	return c.apiClient.DebugWithResponse(ctx)
 }
 
 type HTTPError struct {
@@ -131,6 +155,7 @@ type ClientConfig struct {
 	CircuitBreakerTimeout       time.Duration
 	CircuitBreakerReadyToTrip   circuit.GoBreakerReadyToTripFunc
 	CircuitBreakerOnStateChange circuit.GoBreakerOnStateChangeFunc
+	CustomHTTPClient            *http.Client
 }
 
 type ClientOption func(*Client)
@@ -280,6 +305,12 @@ func WithClientConfig(config *ClientConfig) ClientOption {
 	}
 }
 
+func WithCustomHTTPClient(client *http.Client) ClientOption {
+	return func(c *Client) {
+		c.apiConfig.CustomHTTPClient = client
+	}
+}
+
 func NewClient(opts ...ClientOption) *Client {
 	c := &Client{apiConfig: &ClientConfig{
 		RetryInterval:             defaultRetryInterval,
@@ -304,12 +335,16 @@ func NewClient(opts ...ClientOption) *Client {
 			circuit.WithGoBreakerReadyToTrip(c.apiConfig.CircuitBreakerReadyToTrip),
 			circuit.WithGoBreakerOnStateChange(c.apiConfig.CircuitBreakerOnStateChange),
 		)
+		client := c.apiConfig.CustomHTTPClient
+		if client == nil {
+			client = &http.Client{
+				Timeout: c.apiConfig.ConnectionTimeout,
+			}
+		}
 		httpClient := circuit.NewHTTPClient(
 			circuit.WithHTTPRequestDoer(
 				NewAPICall(
-					&http.Client{
-						Timeout: c.apiConfig.ConnectionTimeout,
-					},
+					client,
 					c.apiConfig,
 				)),
 			circuit.WithCircuitBreaker(cb),
@@ -335,5 +370,7 @@ func NewClient(opts ...ClientOption) *Client {
 	c.collections = &collections{c.apiClient}
 	c.aliases = &aliases{c.apiClient}
 	c.MultiSearch = &multiSearch{c.apiClient}
+	c.synonymSets = &synonymSets{c.apiClient}
+	c.curationSets = &curationSets{c.apiClient}
 	return c
 }
